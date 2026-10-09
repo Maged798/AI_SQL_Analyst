@@ -6,6 +6,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+PALETTE = ["#16866A", "#57B894", "#9AD8B7", "#E5B755", "#E77D65", "#7187A8"]
+
 
 def build_chart(frame: pd.DataFrame, chart_type: str, x_column: str | None,
                 y_column: str | None) -> go.Figure | None:
@@ -19,11 +21,22 @@ def build_chart(frame: pd.DataFrame, chart_type: str, x_column: str | None,
     kind = chart_type.lower()
     try:
         if kind == "pie":
-            return px.pie(frame, names=x, values=y, hole=0.48)
+            figure = px.pie(frame, names=x, values=y, hole=0.48, color_discrete_sequence=PALETTE)
+            figure.update_traces(marker=dict(line=dict(color="#FFFFFF", width=2)),
+                                 textfont=dict(color="#24342D"))
+            return figure
         if kind == "line":
-            return px.line(frame, x=x, y=y, markers=True)
+            figure = px.line(frame, x=x, y=y, markers=True)
+            figure.update_traces(line=dict(color=PALETTE[0], width=3),
+                                 marker=dict(color=PALETTE[0], size=8))
+            return figure
         if kind == "scatter":
-            return px.scatter(frame, x=x, y=y)
-        return px.bar(frame, x=x, y=y)
+            figure = px.scatter(frame, x=x, y=y)
+            figure.update_traces(marker=dict(color=PALETTE[0], size=11,
+                                             line=dict(color="#FFFFFF", width=1)))
+            return figure
+        figure = px.bar(frame, x=x, y=y)
+        figure.update_traces(marker_color=PALETTE[0])
+        return figure
     except (ValueError, TypeError):
         return None

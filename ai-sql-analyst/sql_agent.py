@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from typing import Any
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -22,22 +23,21 @@ class QueryPlan(BaseModel):
 
 
 def _client(api_key: str | None = None, base_url: str | None = None) -> OpenAI:
-    key = api_key or os.getenv("AI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    key = api_key or os.getenv("AI_API_KEY")
     if not key:
         raise ValueError("Add a provider API key in the sidebar or set AI_API_KEY in .env.")
-    configured_url = os.getenv("AI_BASE_URL") or os.getenv("OPENAI_BASE_URL", "")
-    resolved_base_url = (base_url if base_url is not None else configured_url).strip()
-    # An empty base URL can be interpreted as a relative URL by the SDK.
-    # Use the standard endpoint by default and honor only a nonempty override.
-    return OpenAI(
-        api_key=key,
-        base_url=resolved_base_url or "https://api.openai.com/v1",
-    )
+    resolved_base_url = (base_url if base_url is not None else os.getenv("AI_BASE_URL", "")).strip()
+    parsed_url = urlsplit(resolved_base_url)
+    if parsed_url.scheme not in {"https", "http"} or not parsed_url.netloc:
+        raise ValueError("Enter the API base URL from your provider in the sidebar or set AI_BASE_URL in .env.")
+    return OpenAI(api_key=key, base_url=resolved_base_url)
 
 
 def _model(model: str | None = None) -> str:
-    configured_model = os.getenv("AI_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    return (model or configured_model).strip()
+    resolved_model = (model if model is not None else os.getenv("AI_MODEL", "")).strip()
+    if not resolved_model:
+        raise ValueError("Enter the model ID from your provider in the sidebar or set AI_MODEL in .env.")
+    return resolved_model
 
 
 def generate_query(

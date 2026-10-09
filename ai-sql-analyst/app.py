@@ -29,7 +29,9 @@ margin-bottom: 1.4rem; }
 .eyebrow { font-size: .76rem; font-weight: 700; color: #308054; text-transform: uppercase; letter-spacing: .12em; }
 .hero h1 { font-size: clamp(2rem,4vw,3rem); margin: .55rem 0; }
 .hero p { color: #65736d; font-size: 1.02rem; margin: 0; max-width: 720px; }
-div[data-testid="stMetric"] { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 1rem; }
+div[data-testid="stMetric"] { background: white; color: #17221f !important; border: 1px solid var(--line); border-radius: 16px; padding: 1rem; }
+div[data-testid="stMetric"] *, div[data-testid="stMetric"] [data-testid="stMetricLabel"],
+div[data-testid="stMetric"] [data-testid="stMetricValue"] { color: #17221f !important; opacity: 1 !important; }
 .stButton button[kind="primary"] { border-radius: 12px; font-weight: 700; min-height: 3rem; }
 div[data-testid="stForm"] { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 1.2rem; }
 </style>
@@ -48,13 +50,13 @@ with st.sidebar:
     api_key = st.text_input("Provider API key", value="", type="password", help="Paste the secret API key from your AI provider. It is used for this session and is not saved by the app.")
     base_url = st.text_input(
         "API base URL",
-        value=os.getenv("AI_BASE_URL", os.getenv("OPENAI_BASE_URL", "")),
-        placeholder="Enter provider API base URL",
-        help="Enter the provider's API endpoint, not its website or key page. Leave blank only if your provider uses the standard endpoint.",
+        value=os.getenv("AI_BASE_URL", ""),
+        placeholder="Required: enter the provider API URL",
+        help="Enter the API base URL from your provider's documentation, not its website or key page.",
     )
     model_name = st.text_input(
         "Model name",
-        value=os.getenv("AI_MODEL", os.getenv("OPENAI_MODEL", "")),
+        value=os.getenv("AI_MODEL", ""),
         placeholder="Enter the model ID from your provider",
         help="Enter the model ID exactly as your provider documents it.",
     )
@@ -94,8 +96,18 @@ def _render_result(result: dict) -> None:
         st.markdown("#### Visualization")
         figure = build_chart(frame, plan.chart_type, plan.x_column, plan.y_column)
         if figure is not None:
-            figure.update_layout(template="plotly_white", margin=dict(l=10, r=10, t=22, b=10),
-                                 font_family="DM Sans", paper_bgcolor="rgba(0,0,0,0)")
+            figure.update_layout(
+                template="plotly_white",
+                margin=dict(l=18, r=16, t=24, b=18),
+                font=dict(family="DM Sans", color="#24342D", size=13),
+                paper_bgcolor="#FFFFFF",
+                plot_bgcolor="#FFFFFF",
+                legend=dict(font=dict(color="#53665B"), title_text=""),
+            )
+            if plan.chart_type.lower() != "pie":
+                figure.update_xaxes(showgrid=False, linecolor="#DCE7E0", tickfont=dict(color="#53665B"))
+                figure.update_yaxes(showgrid=True, gridcolor="#E8EFEA", zerolinecolor="#DCE7E0",
+                                    tickfont=dict(color="#53665B"))
             st.plotly_chart(figure, use_container_width=True)
         else:
             st.info("This result is best viewed as a table.")
@@ -115,6 +127,8 @@ if submitted:
         st.error("Connect a valid SQLite database before asking a question.")
     elif not model_name.strip():
         st.warning("Enter your provider's model ID in the sidebar.")
+    elif not base_url.strip() and not os.getenv("AI_BASE_URL", "").strip():
+        st.warning("Enter your provider's API base URL in the sidebar.")
     else:
         try:
             with st.status("Understanding your question and querying the database…", expanded=True) as status:
